@@ -38,10 +38,10 @@ in
   };
 
   plugins = {
-    easy-dotnet.enable = ov false;
-    firenvim.enable = ov false;
-    leetcode.enable = ov false;
-    showkeys.enable = ov false;
+    easy-dotnet.enable = lib.mkForce false;
+    firenvim.enable = lib.mkForce false;
+    leetcode.enable = lib.mkForce false;
+    showkeys.enable = lib.mkForce false;
   };
 
   # copilot: lsp.nix sets enable at priority 100; mkOverride 900 loses — use mkForce
