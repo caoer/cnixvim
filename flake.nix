@@ -2,11 +2,8 @@
   description = "ZT's Neovim — upstream khanelivim + zt customizations";
 
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
-
-    # Do NOT follows nixpkgs — khanelivim.cachix.org builds against its own
-    # nixpkgs pin. Following a different nixpkgs changes all derivation hashes
-    # and defeats the cache.
+    # No nixpkgs input — use khanelivim's nixpkgs so intermediate plugin
+    # derivation hashes match khanelivim.cachix.org.
     khanelivim.url = "github:khaneliman/khanelivim";
   };
 
@@ -23,27 +20,22 @@
   };
 
   outputs =
-    {
-      nixpkgs,
-      khanelivim,
-      ...
-    }:
+    { khanelivim, ... }:
     let
+      lib = khanelivim.inputs.nixpkgs.lib;
       systems = [
         "aarch64-darwin"
         "x86_64-darwin"
         "aarch64-linux"
         "x86_64-linux"
       ];
-      forAllSystems = nixpkgs.lib.genAttrs systems;
+      forAllSystems = lib.genAttrs systems;
     in
     {
       packages = forAllSystems (
         system:
         let
-          lib = nixpkgs.lib;
-
-          pkgs = import nixpkgs {
+          pkgs = import khanelivim.inputs.nixpkgs {
             inherit system;
             config.allowUnfree = true;
             overlays = lib.attrValues khanelivim.inputs.nixvim.overlays;
