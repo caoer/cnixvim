@@ -1,12 +1,11 @@
 {
-  description = "ZT's Neovim — thin wrapper over caoer/nixvim (khanelivim fork) with zt profile";
+  description = "ZT's Neovim — upstream khanelivim + zt customizations";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
 
-    # khanelivim fork with zt profile + zt-extras
     khanelivim = {
-      url = "github:caoer/nixvim";
+      url = "github:khaneliman/khanelivim";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
@@ -42,10 +41,12 @@
       packages = forAllSystems (
         system:
         let
+          lib = nixpkgs.lib;
+
           pkgs = import nixpkgs {
             inherit system;
             config.allowUnfree = true;
-            overlays = nixpkgs.lib.attrValues khanelivim.inputs.nixvim.overlays;
+            overlays = lib.attrValues khanelivim.inputs.nixvim.overlays;
           };
 
           neovim = (khanelivim.inputs.nixvim.lib.evalNixvim {
@@ -59,14 +60,20 @@
 
             modules = [
               khanelivim.nixvimModules.default
+
+              # Base: use standard profile from upstream
               {
-                enableMan = nixpkgs.lib.mkDefault (
-                  nixpkgs.lib.hasAttr system khanelivim.inputs.nixvim.packages
-                );
-                nixpkgs.pkgs = nixpkgs.lib.mkDefault pkgs;
-                nixpkgs.config = nixpkgs.lib.mkForce { };
-                khanelivim.profile = "zt";
+                enableMan = lib.mkDefault (lib.hasAttr system khanelivim.inputs.nixvim.packages);
+                nixpkgs.pkgs = lib.mkDefault pkgs;
+                nixpkgs.config = lib.mkForce { };
+                khanelivim.profile = "standard";
               }
+
+              # ZT overrides on top of standard
+              ./modules/zt-overrides.nix
+
+              # ZT extras: keymaps, autocmds, clipboard, plugins
+              ./modules/zt-extras.nix
             ];
           }).config.build.package;
         in
