@@ -4,10 +4,10 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
 
-    khanelivim = {
-      url = "github:khaneliman/khanelivim";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
+    # Do NOT follows nixpkgs — khanelivim.cachix.org builds against its own
+    # nixpkgs pin. Following a different nixpkgs changes all derivation hashes
+    # and defeats the cache.
+    khanelivim.url = "github:khaneliman/khanelivim";
   };
 
   nixConfig = {
