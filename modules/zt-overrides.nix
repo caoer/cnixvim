@@ -46,6 +46,7 @@ in
 
   # copilot: lsp.nix sets enable at priority 100; mkOverride 900 loses — use mkForce
   lsp.servers.copilot.enable = lib.mkForce false;
+  lsp.servers.stylelint_lsp.enable = lib.mkForce false;
 
   # Window nav: <C-h/j/k/l> in normal + terminal mode
   keymaps = [
