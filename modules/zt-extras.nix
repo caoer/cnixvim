@@ -57,12 +57,27 @@ in
       callback.__raw = "function() vim.diagnostic.enable(false, { bufnr = 0 }) end";
     }
     {
-      event = [ "FileType" ];
-      pattern = [ "toml" "yaml" ];
+      # Marker folding ({{{ / }}}) for toml/yaml/nix. Upstream lsp.nix
+      # force-sets foldmethod=expr on BufWinEnter + LspAttach (nixd attaches
+      # async, after modelines), so we listen on the same events and
+      # vim.schedule to re-assert marker AFTER upstream's callback runs.
+      event = [ "FileType" "BufWinEnter" "LspAttach" ];
       callback.__raw = ''
-        function()
-          vim.opt_local.foldmethod = "marker"
-          vim.opt_local.foldlevel = 0
+        function(args)
+          local bufnr = args.buf
+          if not bufnr or not vim.api.nvim_buf_is_valid(bufnr) then return end
+          local marker_fts = { toml = true, yaml = true, nix = true }
+          if not marker_fts[vim.bo[bufnr].filetype] then return end
+          local first = args.event == "FileType"
+          vim.schedule(function()
+            if not vim.api.nvim_buf_is_valid(bufnr) then return end
+            local win = vim.fn.bufwinid(bufnr)
+            if win == -1 then return end
+            vim.api.nvim_win_call(win, function()
+              vim.wo.foldmethod = "marker"
+              if first then vim.wo.foldlevel = 0 end
+            end)
+          end)
         end
       '';
     }
