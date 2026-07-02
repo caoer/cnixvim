@@ -75,6 +75,9 @@ in
             if win == -1 then return end
             vim.api.nvim_win_call(win, function()
               vim.wo.foldmethod = "marker"
+              -- classic "+--  N lines: title" banner; upstream's transparent
+              -- LSP foldtext makes closed marker folds invisible
+              vim.wo.foldtext = "foldtext()"
               if first then vim.wo.foldlevel = 0 end
             end)
           end)
