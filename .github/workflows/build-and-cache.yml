@@ -1,8 +1,10 @@
 name: "Build and push to attic cache"
 # Builds the neovim package for every fleet platform and pushes the closure
-# to the yul2 attic cache (attic-yul2.0xdao.app) so osfiles hosts substitute
-# instead of rebuilding. ATTIC_TOKEN is a scoped pull+push token for the
-# yul2 cache, minted on dev-yul2 via atticadm.
+# to the PUBLIC `cnixvim` attic cache (attic-yul2.0xdao.app/cnixvim) so any
+# downstream substitutes instead of rebuilding — no pull token needed
+# (substituter + key are in this flake's nixConfig). ATTIC_TOKEN is a
+# pull+push token scoped to the cnixvim cache only, minted on dev-yul2
+# via atticadm (sub=github-cnixvim).
 on:
   push:
     branches:
@@ -39,10 +41,10 @@ jobs:
             accept-flake-config = true
       - name: "Build"
         run: nix build .#packages.${{ matrix.system }}.neovim -L
-      - name: "Push closure to yul2 cache"
+      - name: "Push closure to cnixvim cache"
         env:
           ATTIC_TOKEN: "${{ secrets.ATTIC_TOKEN }}"
         run: |
           nix profile install nixpkgs#attic-client
           attic login yul2 https://attic-yul2.0xdao.app/ "$ATTIC_TOKEN"
-          attic push yul2 ./result
+          attic push yul2:cnixvim ./result
