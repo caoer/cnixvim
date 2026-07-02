@@ -55,6 +55,8 @@ jobs:
           # paths via their fetchurl-style drvs instead.
           nix path-info -r --json ./result \
             | jq -r 'to_entries[] | select(.value.narSize >= 94371840) | "skip (>90MB): \(.key) (\(.value.narSize / 1048576 | floor) MB)"' >&2
+          # --no-closure: the filtered list already IS the closure minus the
+          # oversized paths — without it attic re-adds them as references.
           nix path-info -r --json ./result \
             | jq -r 'to_entries[] | select(.value.narSize < 94371840) | .key' \
-            | xargs attic push yul2:cnixvim
+            | xargs attic push --no-closure yul2:cnixvim
