@@ -57,44 +57,30 @@ in
       callback.__raw = "function() vim.diagnostic.enable(false, { bufnr = 0 }) end";
     }
     {
-      # Folding: toml/yaml = pure marker ({{{ / }}}); nix = combined expr
-      # (zt_marker_ts_foldexpr: comment sections + treesitter structure, so
-      # za works on attrsets AND marker sections). Upstream lsp.nix
-      # force-sets foldmethod=expr on BufWinEnter + LspAttach (nixd attaches
-      # async, after modelines), so we listen on the same events and
-      # vim.schedule to re-assert AFTER upstream's callback runs.
+      # toml/yaml default to marker folds ({{{ / }}}); any buffer can flip
+      # fold method with zT (see zt_toggle_foldmethod)
+      event = [ "FileType" ];
+      pattern = [ "toml" "yaml" ];
+      callback.__raw = "function(args) vim.b[args.buf].zt_marker_folds = true end";
+    }
+    {
+      # Upstream lsp.nix force-sets foldmethod=expr on BufWinEnter +
+      # LspAttach (LSP attaches async, after modelines/FileType). For
+      # buffers opted into marker folds, re-assert by scheduling AFTER
+      # upstream's callback runs.
       event = [ "FileType" "BufWinEnter" "LspAttach" ];
       callback.__raw = ''
         function(args)
           local bufnr = args.buf
-          if not bufnr or not vim.api.nvim_buf_is_valid(bufnr) then return end
-          local mode = ({ toml = "marker", yaml = "marker", nix = "combined" })[vim.bo[bufnr].filetype]
-          if not mode then return end
-          local first = args.event == "FileType"
+          if not (bufnr and vim.api.nvim_buf_is_valid(bufnr)) then return end
+          if not vim.b[bufnr].zt_marker_folds then return end
+          local collapse = args.event == "FileType"
           vim.schedule(function()
             if not vim.api.nvim_buf_is_valid(bufnr) then return end
             local win = vim.fn.bufwinid(bufnr)
             if win == -1 then return end
             vim.api.nvim_win_call(win, function()
-              -- classic "+--  N lines: title" banner; upstream's transparent
-              -- LSP foldtext makes closed folds invisible
-              vim.wo.foldtext = "foldtext()"
-              if mode == "marker" then
-                vim.wo.foldmethod = "marker"
-                if first then vim.wo.foldlevel = 0 end
-              else
-                vim.wo.foldmethod = "expr"
-                vim.wo.foldexpr = "v:lua.zt_marker_ts_foldexpr()"
-                vim.wo.foldlevel = 99
-                if first then
-                  -- start with just the {{{ sections collapsed
-                  for l = 1, vim.api.nvim_buf_line_count(bufnr) do
-                    if vim.fn.getline(l):find("{{{", 1, true) then
-                      pcall(vim.cmd, l .. "foldclose")
-                    end
-                  end
-                end
-              end
+              _G.zt_apply_marker_folds(collapse)
             end)
           end)
         end
@@ -128,6 +114,7 @@ in
 
   # ── Keymaps (simple string actions) ────────────────────────────────────
   keymaps = [
+    { mode = "n"; key = "zT"; action.__raw = "function() _G.zt_toggle_foldmethod() end"; options = { desc = "Toggle fold method (marker/treesitter)"; silent = true; }; }
     {
       mode = "n"; key = "gv"; action = ":!code %<CR>";
       options = { desc = "Open in VS Code"; silent = true; };
@@ -223,38 +210,29 @@ in
   # ── Complex Lua config ─────────────────────────────────────────────────
   extraConfigLua = ''
     -- ====================================================================
-    -- ZT Profile: Combined foldexpr — {{{/}}} comment sections + treesitter
+    -- ZT Profile: Fold method toggle (zT) — marker {{{ }}} vs treesitter
     -- ====================================================================
-    -- Marker folds nest one level inside the enclosing treesitter level;
-    -- non-marker lines get treesitter level + number of enclosing sections.
-    -- Used by the nix folding autocmd (see autoCmd).
-    local zt_fold_cache = {}
-    function _G.zt_marker_ts_foldexpr(lnum)
-      lnum = lnum or vim.v.lnum
-      local bufnr = vim.api.nvim_get_current_buf()
-      local tick = vim.api.nvim_buf_get_changedtick(bufnr)
-      local c = zt_fold_cache[bufnr]
-      if not c or c.tick ~= tick then
-        c = { tick = tick, res = {} }
-        local stack = {}
-        local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-        for i, line in ipairs(lines) do
-          local ts = tostring(vim.treesitter.foldexpr(i))
-          local prefix, lvl = ts:match("^([><]?)(%d+)$")
-          lvl = tonumber(lvl) or 0
-          if line:find("{{{", 1, true) then
-            local mlvl = lvl + #stack + 1
-            table.insert(stack, mlvl)
-            c.res[i] = ">" .. mlvl
-          elseif line:find("}}}", 1, true) and #stack > 0 then
-            c.res[i] = "<" .. table.remove(stack)
-          else
-            c.res[i] = (prefix or "") .. (lvl + #stack)
-          end
-        end
-        zt_fold_cache[bufnr] = c
+    -- One buffer-sticky switch instead of merged fold systems. Upstream
+    -- lsp.nix force-sets expr folding on BufWinEnter/LspAttach, so opted-in
+    -- buffers get re-asserted by the folding autocmd (see autoCmd).
+    function _G.zt_apply_marker_folds(collapse)
+      vim.wo.foldmethod = "marker"
+      vim.wo.foldtext = "foldtext()"
+      if collapse then vim.wo.foldlevel = 0 end
+    end
+
+    function _G.zt_toggle_foldmethod()
+      if vim.b.zt_marker_folds then
+        vim.b.zt_marker_folds = nil
+        vim.wo.foldmethod = "expr"
+        vim.wo.foldexpr = "v:lua.vim.treesitter.foldexpr()"
+        vim.wo.foldlevel = 99
+        vim.notify("folds: treesitter")
+      else
+        vim.b.zt_marker_folds = true
+        _G.zt_apply_marker_folds(true)
+        vim.notify("folds: marker {{{ }}}")
       end
-      return c.res[lnum] or "0"
     end
 
     -- ====================================================================
