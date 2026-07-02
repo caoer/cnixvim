@@ -47,4 +47,14 @@ jobs:
         run: |
           nix profile install nixpkgs#attic-client
           attic login yul2 https://attic-yul2.0xdao.app/ "$ATTIC_TOKEN"
-          attic push yul2:cnixvim ./result
+          # The cache sits behind a CF Tunnel (100 MB request-body hard limit),
+          # and attic uploads each NAR as one request — skip NARs >90 MB.
+          # In practice only the fenix rust toolchain (runtime dep of
+          # rustaceanvim) exceeds this, and only on platforms khanelivim's
+          # cachix doesn't cover (aarch64-linux); consumers realise those few
+          # paths via their fetchurl-style drvs instead.
+          nix path-info -r --json ./result \
+            | jq -r 'to_entries[] | select(.value.narSize >= 94371840) | "skip (>90MB): \(.key) (\(.value.narSize / 1048576 | floor) MB)"' >&2
+          nix path-info -r --json ./result \
+            | jq -r 'to_entries[] | select(.value.narSize < 94371840) | .key' \
+            | xargs attic push yul2:cnixvim
