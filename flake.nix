@@ -38,43 +38,27 @@
       packages = forAllSystems (
         system:
         let
-          pkgs = import khanelivim.inputs.nixpkgs {
-            inherit system;
-            config.allowUnfree = true;
-            overlays = lib.attrValues khanelivim.inputs.nixvim.overlays;
-          };
+          # Supported customization surface: evaluate an upstream profile via
+          # khanelivim.lib.mkNixvimConfig, then extend it with zt modules.
+          # zt-extras (keymaps/autocmds/clipboard/plugins) always applies
+          # since cnixvim IS the zt build.
+          mkNeovim =
+            profile: modules:
+            ((khanelivim.lib.mkNixvimConfig { inherit system profile; }).extendModules {
+              modules = modules ++ [ ./modules/zt-extras.nix ];
+            }).config.build.package;
 
-          neovim = (khanelivim.inputs.nixvim.lib.evalNixvim {
-            inherit system;
+          # Workstation build: upstream standard profile + zt trims.
+          neovim = mkNeovim "standard" [ ./modules/zt-overrides.nix ];
 
-            extraSpecialArgs = {
-              inputs = khanelivim.inputs;
-              self = khanelivim;
-              inherit system;
-            };
-
-            modules = [
-              khanelivim.nixvimModules.default
-
-              # Base: use standard profile from upstream
-              {
-                enableMan = lib.mkDefault (lib.hasAttr system khanelivim.inputs.nixvim.packages);
-                nixpkgs.pkgs = lib.mkDefault pkgs;
-                nixpkgs.config = lib.mkForce { };
-                khanelivim.profile = "standard";
-              }
-
-              # ZT overrides on top of standard
-              ./modules/zt-overrides.nix
-
-              # ZT extras: keymaps, autocmds, clipboard, plugins
-              ./modules/zt-extras.nix
-            ];
-          }).config.build.package;
+          # Small-server build: upstream basic profile ("comfortable remote
+          # editor") + zt trims of the toolchain-heavy LSP defaults. Same
+          # zt-extras workflow, ~10x smaller closure.
+          server = mkNeovim "basic" [ ./modules/zt-server.nix ];
         in
         {
           default = neovim;
-          neovim = neovim;
+          inherit neovim server;
         }
       );
     };
