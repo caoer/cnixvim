@@ -54,7 +54,9 @@ jobs:
           printf '%s' "$NIKS3_TOKEN" > "$RUNNER_TEMP/niks3-token"
           export NIKS3_AUTH_TOKEN_FILE="$RUNNER_TEMP/niks3-token"
           export NIKS3_SERVER_URL="https://niks3.0xtau.com"
-          nix profile install nixpkgs#niks3
+          # Pinned to the same rev osfiles locks (nixpkgs' niks3 lags — 1.6.1
+          # lacks --pin). Bump alongside the osfiles niks3 flake input.
+          nix profile install github:Mic92/niks3/780939adecefc2f84be700a6f9ae1cc9385ad240#niks3
           # One push per root: --pin takes exactly one store path. Pins are
           # upserts — they shield the latest closure from the server's 30-day
           # GC even when this repo goes idle. The second push dedups against
