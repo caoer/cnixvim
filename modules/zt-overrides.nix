@@ -8,6 +8,38 @@ let
   ov = lib.mkOverride 900;
 in
 {
+  # Treesitter out-of-bounds guard (upstream bug neovim/neovim#38303, root #37091).
+  # The highlighter's decoration provider (and injection parse) can read a node's
+  # byte range via nvim_buf_get_text *before* the tree re-parses after a buffer edit
+  # (classically `dd` in a larger file); the stale range is out of bounds so
+  # nvim_buf_get_text throws "Index out of bounds". Core catches it and self-corrects
+  # next redraw, but spams:
+  #   Error in decoration provider ... (ns=nvim.treesitter.highlighter): Index out of bounds
+  # The bug exists on stable (0.11.x) and nightly alike, so there is no version to
+  # move to. vim.treesitter.get_node_text is the single lua entry point that calls
+  # nvim_buf_get_text for the highlighter and injection language resolution; internal
+  # callers resolve it at call-time, so wrapping it here makes an out-of-bounds read
+  # return "" (skip text for that one stale frame — the next redraw fixes it) instead
+  # of throwing. Remove once upstream #38303 lands bounds checks.
+  extraConfigLuaPre = ''
+    do
+      local ts = vim.treesitter
+      if ts and type(ts.get_node_text) == "function" and not ts.__bounds_guarded then
+        local orig = ts.get_node_text
+        vim.g.ts_bounds_guard_catches = 0
+        ts.get_node_text = function(...)
+          local ok, res = pcall(orig, ...)
+          if ok then
+            return res
+          end
+          vim.g.ts_bounds_guard_catches = (vim.g.ts_bounds_guard_catches or 0) + 1
+          return ""
+        end
+        ts.__bounds_guarded = true
+      end
+    end
+  '';
+
   khanelivim = {
     ai.plugins = ov [ "claudecode" ];
 
