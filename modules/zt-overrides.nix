@@ -47,7 +47,7 @@ in
     # set up (BufReadPost fires before DeferredUIEnter, so noice.setup()
     # hasn't run and noice.options.notify is nil → crash).
     faster.settings.features.noice = {
-      disable.__raw = ''
+      disable.__raw = lib.mkForce ''
         function()
           local ok, noice = pcall(require, "noice")
           if ok then
@@ -58,7 +58,7 @@ in
           end
         end
       '';
-      enable.__raw = ''
+      enable.__raw = lib.mkForce ''
         function()
           local ok, noice = pcall(require, "noice")
           if ok then
@@ -69,7 +69,7 @@ in
           end
         end
       '';
-      commands.__raw = ''
+      commands.__raw = lib.mkForce ''
         function()
           vim.api.nvim_create_user_command("FasterEnableNoice", function()
             local ok, noice = pcall(require, "noice")
