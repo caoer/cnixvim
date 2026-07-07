@@ -49,6 +49,15 @@ in
     };
   };
 
+  # ── Lint ───────────────────────────────────────────────────────────────
+  # Markdown diagnostics are disabled buffer-wide (autocmd below), so the
+  # upstream markdown linters (markdownlint-cli2 + codespell) run on every
+  # InsertLeave/BufWritePost only to have their output discarded. Their sole
+  # visible output is spawn-failure popups ("Error running markdownlint-cli2:
+  # ENOENT") when uv_spawn hits a transiently dead cwd (agent tree rewrites
+  # under an open buffer). Cut the filetype instead of guarding the spawn.
+  plugins.lint.lintersByFt.markdown = lib.mkForce [ ];
+
   # ── Autocmds ───────────────────────────────────────────────────────────
   autoCmd = [
     {
