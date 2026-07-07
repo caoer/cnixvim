@@ -42,6 +42,46 @@ in
     firenvim.enable = lib.mkForce false;
     leetcode.enable = lib.mkForce false;
     showkeys.enable = lib.mkForce false;
+
+    # Guard faster.nvim's noice disable/enable against noice not yet being
+    # set up (BufReadPost fires before DeferredUIEnter, so noice.setup()
+    # hasn't run and noice.options.notify is nil → crash).
+    faster.settings.features.noice = {
+      disable.__raw = ''
+        function()
+          local ok, noice = pcall(require, "noice")
+          if ok then
+            local dok, err = pcall(noice.disable)
+            if not dok then
+              vim.notify("[faster.nvim] noice.disable() skipped: " .. tostring(err), vim.log.levels.DEBUG)
+            end
+          end
+        end
+      '';
+      enable.__raw = ''
+        function()
+          local ok, noice = pcall(require, "noice")
+          if ok then
+            local eok, err = pcall(noice.enable)
+            if not eok then
+              vim.notify("[faster.nvim] noice.enable() skipped: " .. tostring(err), vim.log.levels.DEBUG)
+            end
+          end
+        end
+      '';
+      commands.__raw = ''
+        function()
+          vim.api.nvim_create_user_command("FasterEnableNoice", function()
+            local ok, noice = pcall(require, "noice")
+            if ok then pcall(noice.enable) end
+          end, {})
+          vim.api.nvim_create_user_command("FasterDisableNoice", function()
+            local ok, noice = pcall(require, "noice")
+            if ok then pcall(noice.disable) end
+          end, {})
+        end
+      '';
+    };
   };
 
   # copilot: lsp.nix sets enable at priority 100; mkOverride 900 loses — use mkForce
