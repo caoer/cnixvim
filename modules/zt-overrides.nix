@@ -3,11 +3,20 @@
 # Standard profile is the base; this trims it for ZT's workflow:
 # claudecode-only AI, no Java/C#/JJ/wakatime/copilot/firenvim/leetcode,
 # git without octo, no screenshots, diffview instead of codediff.
-{ lib, ... }:
+{ lib, pkgs, ... }:
 let
   ov = lib.mkOverride 900;
 in
 {
+  # Mermaid rendering for snacks.image (upstream enables image but leaves
+  # mermaid-cli commented out pending a nixpkgs chromium for darwin).
+  # mmdc drives a browser via puppeteer; point it at the installed Chrome —
+  # upstream's default expects a Homebrew Chromium.app that isn't here.
+  extraPackages = [ pkgs.mermaid-cli ];
+  env = lib.optionalAttrs pkgs.stdenv.isDarwin {
+    PUPPETEER_EXECUTABLE_PATH = lib.mkForce "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+  };
+
   # Treesitter out-of-bounds guard (upstream bug neovim/neovim#38303, root #37091).
   # The highlighter's decoration provider (and injection parse) can read a node's
   # byte range via nvim_buf_get_text *before* the tree re-parses after a buffer edit
