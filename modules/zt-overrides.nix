@@ -31,6 +31,17 @@ in
   # return "" (skip text for that one stale frame — the next redraw fixes it) instead
   # of throwing. Remove once upstream #38303 lands bounds checks.
   extraConfigLuaPre = ''
+    -- tmux's global environment leaks DIRENV_* state from whatever shell last
+    -- exported it (e.g. a locus .envrc). direnv.vim (bundled by khanelivim)
+    -- runs `direnv export` shortly after startup; with that stale state and no
+    -- .envrc in scope, direnv "unloads" — reverting PATH to the recorded
+    -- baseline and wiping every nix-wrapper PATH entry (mmdc, LSP servers,
+    -- formatters). Clear the inherited state so the wrapper environment is
+    -- direnv's baseline; project .envrc loading still works on top of it.
+    for _, k in ipairs({ "DIRENV_DIFF", "DIRENV_DIR", "DIRENV_FILE", "DIRENV_WATCHES" }) do
+      vim.env[k] = nil
+    end
+
     do
       local ts = vim.treesitter
       if ts and type(ts.get_node_text) == "function" and not ts.__bounds_guarded then
