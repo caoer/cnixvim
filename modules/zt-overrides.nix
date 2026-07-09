@@ -140,6 +140,11 @@ in
   lsp.servers.copilot.enable = lib.mkForce false;
   lsp.servers.stylelint_lsp.enable = lib.mkForce false;
 
+  # Crash protection: upstream disables swapfile (options.nix, priority 100).
+  # A hard crash with an unsaved buffer is otherwise unrecoverable — undofile
+  # only persists on :w. Swap syncs every 4s/200 chars; nvim -r recovers it.
+  opts.swapfile = lib.mkForce true;
+
   # Window nav: <C-h/j/k/l> in normal + terminal mode
   keymaps = [
     { mode = "n"; key = "<C-h>"; action = "<C-w>h"; options = { desc = "Go to left window"; silent = true; }; }
