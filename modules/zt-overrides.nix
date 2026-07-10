@@ -90,6 +90,10 @@ in
   };
 
   plugins = {
+    # Ordinal-only tab numbers (upstream shows buffer-id·ordinal); paired
+    # with <leader>1-9 jumps below.
+    bufferline.settings.options.numbers = lib.mkForce "ordinal";
+
     easy-dotnet.enable = lib.mkForce false;
     firenvim.enable = lib.mkForce false;
     leetcode.enable = lib.mkForce false;
@@ -155,5 +159,12 @@ in
     { mode = "t"; key = "<C-j>"; action = "<cmd>wincmd j<cr>"; options = { desc = "Go to below window"; silent = true; }; }
     { mode = "t"; key = "<C-k>"; action = "<cmd>wincmd k<cr>"; options = { desc = "Go to above window"; silent = true; }; }
     { mode = "t"; key = "<C-l>"; action = "<cmd>wincmd l<cr>"; options = { desc = "Go to right window"; silent = true; }; }
-  ];
+  ]
+  # Buffer jumps by bufferline ordinal: <leader>1-9 → Nth visible tab
+  ++ map (n: {
+    mode = "n";
+    key = "<leader>${toString n}";
+    action = "<cmd>BufferLineGoToBuffer ${toString n}<cr>";
+    options = { desc = "Go to buffer ${toString n}"; silent = true; };
+  }) (lib.range 1 9);
 }
