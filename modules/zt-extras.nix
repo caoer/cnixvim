@@ -5,6 +5,7 @@
 {
   lib,
   pkgs,
+  cccMdformat,
   ...
 }:
 let
@@ -57,6 +58,24 @@ in
   # ENOENT") when uv_spawn hits a transiently dead cwd (agent tree rewrites
   # under an open buffer). Cut the filetype instead of guarding the spawn.
   plugins.lint.lintersByFt.markdown = lib.mkForce [ ];
+
+  # ── Format-on-save (markdown → ccc-mdformat) ───────────────────────────
+  # Markdown formats to lean, token-efficient output ON DISK: ccc-mdformat
+  # is mdformat with the canonical flags (--wrap=no --compact-tables) and the
+  # 4-plugin ship set baked in — compact tables, unwrapped prose, frontmatter
+  # + GFM checkboxes preserved. Replaces upstream's deno_fmt for markdown.
+  # File mode (stdin=false + $FILENAME) matches ccc-mdformat's tested in-place
+  # `ccc-mdformat FILE` contract. Pretty is a display-only layer (markview
+  # conceal, enabled by the standard profile) — never written to disk.
+  # cccMdformat is injected via _module.args in flake.nix.
+  plugins.conform-nvim.settings = {
+    formatters_by_ft.markdown = lib.mkForce [ "ccc_mdformat" ];
+    formatters.ccc_mdformat = {
+      command = lib.getExe cccMdformat;
+      args = [ "$FILENAME" ];
+      stdin = false;
+    };
+  };
 
   # ── Autocmds ───────────────────────────────────────────────────────────
   autoCmd = [

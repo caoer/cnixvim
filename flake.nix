@@ -5,6 +5,12 @@
     # No nixpkgs input — use khanelivim's nixpkgs so intermediate plugin
     # derivation hashes match khanelivim.cachix.org.
     khanelivim.url = "github:khaneliman/khanelivim";
+
+    # Lean markdown formatter (mdformat + ship-set + baked flags). Its own
+    # nixpkgs is intentional — it only builds a small python env that rides
+    # into cnixvim's closure (CI pushes it to cache.0xtau.com like everything
+    # else), so it never touches khanelivim's plugin hashes.
+    ccc-mdformat.url = "github:caoer/ccc-mdformat";
   };
 
   nixConfig = {
@@ -23,7 +29,7 @@
   };
 
   outputs =
-    { khanelivim, ... }:
+    { khanelivim, ccc-mdformat, ... }:
     let
       lib = khanelivim.inputs.nixpkgs.lib;
       systems = [
@@ -45,7 +51,13 @@
           mkNeovim =
             profile: modules:
             ((khanelivim.lib.mkNixvimConfig { inherit system profile; }).extendModules {
-              modules = modules ++ [ ./modules/zt-extras.nix ];
+              modules = modules ++ [
+                ./modules/zt-extras.nix
+                # Thread the ccc-mdformat binary into the nixvim modules
+                # (zt-extras wires it as the markdown formatter). _module.args
+                # is the module-system-native inject; no specialArgs plumbing.
+                { _module.args.cccMdformat = ccc-mdformat.packages.${system}.default; }
+              ];
             }).config.build.package;
 
           # Workstation build: upstream standard profile + zt trims.
