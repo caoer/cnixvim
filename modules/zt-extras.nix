@@ -59,6 +59,20 @@ in
   # under an open buffer). Cut the filetype instead of guarding the spawn.
   plugins.lint.lintersByFt.markdown = lib.mkForce [ ];
 
+  # yamllint's line-length rule fires "line too long (N > 80 characters)" on
+  # every long YAML line — noise for config/secrets files with long values.
+  # Disable just that rule via inline config data (-d), keeping the rest of
+  # yamllint (indentation, trailing space, syntax errors). Only args are
+  # overridden; nvim-lint's built-in yamllint cmd/parser/severities stay
+  # intact (nixvim emits `__lint.linters.yamllint.args = ...`).
+  plugins.lint.linters.yamllint.args = lib.mkForce [
+    "--format"
+    "parsable"
+    "-d"
+    "{extends: default, rules: {line-length: disable}}"
+    "-"
+  ];
+
   # ── Format-on-save (markdown → ccc-mdformat) ───────────────────────────
   # Markdown formats to lean, token-efficient output ON DISK: ccc-mdformat
   # is mdformat with the canonical flags (--wrap=no --compact-tables) and the
