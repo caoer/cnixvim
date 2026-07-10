@@ -94,6 +94,13 @@ in
     # with <leader>1-9 jumps below.
     bufferline.settings.options.numbers = lib.mkForce "ordinal";
 
+    # Hide the <leader>1-9 buffer jumps from the which-key popup — they'd
+    # crowd out the mnemonic bindings.
+    which-key.settings.spec = map (n: {
+      __unkeyed-1 = "<leader>${toString n}";
+      hidden = true;
+    }) (lib.range 1 9);
+
     easy-dotnet.enable = lib.mkForce false;
     firenvim.enable = lib.mkForce false;
     leetcode.enable = lib.mkForce false;
