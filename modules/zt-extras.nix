@@ -99,23 +99,6 @@ in
       callback.__raw = "function() vim.diagnostic.enable(false, { bufnr = 0 }) end";
     }
     {
-      # Soft wrap for markdown — display-only, disk bytes stay lean
-      # (ccc-mdformat bakes --wrap=no; saving never hard-wraps). linebreak
-      # wraps at word boundaries, breakindent aligns continuation lines.
-      # markview ≥27 renders correctly under wrap: tables are partially
-      # rendered to avoid wrapping issues, code blocks fall back to the
-      # "simple" style — so long tables/code don't visually break.
-      event = [ "FileType" ];
-      pattern = [ "markdown" ];
-      callback.__raw = ''
-        function()
-          vim.opt_local.wrap = true
-          vim.opt_local.linebreak = true
-          vim.opt_local.breakindent = true
-        end
-      '';
-    }
-    {
       # toml/yaml default to marker folds ({{{ / }}}); any buffer can flip
       # fold method with zT (see zt_toggle_foldmethod)
       event = [ "FileType" ];
