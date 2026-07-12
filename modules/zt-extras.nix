@@ -190,6 +190,7 @@ in
     { plugin = pkgs.vimPlugins.hurl-nvim; optional = true; }
     { plugin = pkgs.vimPlugins.nvim-sops; optional = true; }
     { plugin = videre-nvim; optional = true; }
+    { plugin = pkgs.vimPlugins.csvview-nvim; optional = true; }
   ];
 
   # ── Spell dictionary ───────────────────────────────────────────────────
@@ -651,5 +652,22 @@ in
       vim.cmd("delcommand Videre")
       vim.cmd("Videre " .. (opts.args or ""))
     end, { nargs = "?", desc = "JSON Graph Explorer (lazy)" })
+
+    -- Lazy-load csvview.nvim on csv/tsv, auto-enable aligned table view
+    vim.api.nvim_create_autocmd("FileType", {
+      pattern = { "csv", "tsv" },
+      callback = function(args)
+        if not vim.g._csvview_loaded then
+          vim.g._csvview_loaded = true
+          vim.cmd("packadd csvview.nvim")
+          require("csvview").setup({ view = { display_mode = "border" } })
+        end
+        if not require("csvview").is_enabled(args.buf) then
+          require("csvview").enable(args.buf)
+        end
+        vim.keymap.set("n", "<leader>tv", "<cmd>CsvViewToggle<cr>",
+          { buffer = args.buf, desc = "CSV: toggle table view", silent = true })
+      end,
+    })
   '';
 }
