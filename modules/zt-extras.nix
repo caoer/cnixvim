@@ -250,6 +250,23 @@ in
     callouts
   '';
 
+  # ── Nvim 0.13 deprecation shims ────────────────────────────────────────
+  # Bundled plugins still call APIs deprecated in 0.13 (removal: 0.15) —
+  # hardtime/bufferline: vim.F.if_nil; nvim-lightbulb: vim.F.npcall (plenary
+  # and nvim-dap carry more call sites); typescript-tools:
+  # vim.lsp.codelens.refresh (upstream khanelivim has a TODO for it). All are
+  # unfixed at upstream HEAD, so a khanelivim bump can't clear them. Re-point
+  # the old names at their official replacements: the vim.deprecate() warning
+  # path never runs, and the plugins keep working after 0.15 deletes the
+  # originals. Drop each line once upstreams adopt the new APIs.
+  extraConfigLuaPre = ''
+    if vim.nonnil and vim.F then vim.F.if_nil = vim.nonnil end
+    if vim.npcall and vim.F then vim.F.npcall = vim.npcall end
+    if vim.lsp.codelens.enable then
+      vim.lsp.codelens.refresh = function(opts) vim.lsp.codelens.enable(true, opts) end
+    end
+  '';
+
   # ── Complex Lua config ─────────────────────────────────────────────────
   extraConfigLua = ''
     -- ====================================================================
