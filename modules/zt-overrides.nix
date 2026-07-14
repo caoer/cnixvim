@@ -151,6 +151,30 @@ in
   lsp.servers.copilot.enable = lib.mkForce false;
   lsp.servers.stylelint_lsp.enable = lib.mkForce false;
 
+  # tsserver on demand only. typescript-tools' setup() unconditionally calls
+  # vim.lsp.enable, and its root_dir falls back to .git — a stray .js opened
+  # inside a huge repo made tsserver index the whole tree (2026-07-14: filled
+  # the system-wide file table / ENFILE, then V8-OOM'd, SIGBUS-crashing
+  # unrelated processes). Upstream lazy-loads on js/ts FileType; blank the
+  # trigger so setup() never runs on its own (lazy=true, not ft=[]: lz.n
+  # eager-loads specs that have no trigger handlers). :TsStart / <leader>zz
+  # loads the plugin explicitly — attaches the current buffer and stays
+  # enabled for the rest of the session.
+  plugins.typescript-tools.lazyLoad.settings = {
+    ft = lib.mkForce null;
+    lazy = true;
+  };
+
+  userCommands.TsStart = {
+    command.__raw = ''
+      function()
+        require("lz.n").trigger_load("typescript-tools.nvim")
+        vim.notify("typescript-tools: started (attaches js/ts buffers)")
+      end
+    '';
+    desc = "Start TypeScript LSP (typescript-tools) on demand";
+  };
+
   # Crash protection: upstream disables swapfile (options.nix, priority 100).
   # A hard crash with an unsaved buffer is otherwise unrecoverable — undofile
   # only persists on :w. Swap syncs every 4s/200 chars; nvim -r recovers it.
@@ -158,6 +182,7 @@ in
 
   # Window nav: <C-h/j/k/l> in normal + terminal mode
   keymaps = [
+    { mode = "n"; key = "<leader>zz"; action = "<cmd>TsStart<cr>"; options = { desc = "Start TypeScript LSP"; silent = true; }; }
     { mode = "n"; key = "<C-h>"; action = "<C-w>h"; options = { desc = "Go to left window"; silent = true; }; }
     { mode = "n"; key = "<C-j>"; action = "<C-w>j"; options = { desc = "Go to below window"; silent = true; }; }
     { mode = "n"; key = "<C-k>"; action = "<C-w>k"; options = { desc = "Go to above window"; silent = true; }; }
