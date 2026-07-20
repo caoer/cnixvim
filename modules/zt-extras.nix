@@ -21,6 +21,22 @@ let
     doCheck = false;
     meta.homepage = "https://github.com/Owen-Dechow/videre.nvim";
   };
+
+  # nixpkgs' ts-comments (2025-10-28) reads vim.opt.comments._info.default to
+  # detect the default 'comments' — _info was dropped from vim.opt option
+  # objects in Nvim 0.12, so every gc died with "attempt to index field
+  # '_info'". Upstream fix 426303d switches to nvim_get_option_info2. Both
+  # profiles ship ts-comments, so pin here (shared). Drop once nixpkgs'
+  # vimPlugins passes 2026-06-29.
+  ts-comments-nvim = pkgs.vimPlugins.ts-comments-nvim.overrideAttrs (old: {
+    version = "1.5.0-unstable-2026-06-29";
+    src = pkgs.fetchFromGitHub {
+      owner = "folke";
+      repo = "ts-comments.nvim";
+      rev = "426303d38d8c9168737b9b8763a97d84b692978f";
+      hash = "sha256-fvu+NYY/aLbsXmPNiZYnAjFrgPqj1mOuuJQEyDXRtOI=";
+    };
+  });
 in
 {
   # ── Editor option overrides ────────────────────────────────────────────
@@ -49,6 +65,9 @@ in
       ".*surge%-config/providers/.*%.txt" = "dosini";
     };
   };
+
+  # ── Plugin version pins ────────────────────────────────────────────────
+  plugins.ts-comments.package = ts-comments-nvim;
 
   # ── Lint ───────────────────────────────────────────────────────────────
   # Markdown diagnostics are disabled buffer-wide (autocmd below), so the
