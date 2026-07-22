@@ -151,6 +151,16 @@ in
   lsp.servers.copilot.enable = lib.mkForce false;
   lsp.servers.stylelint_lsp.enable = lib.mkForce false;
 
+  # gopls ≥0.22 defaults `vulncheck` to "Prompt": on every go.mod dependency
+  # change it sends a window/showMessageRequest ("Dependencies changed … Run
+  # govulncheck to check for vulnerabilities?" → Yes/No/Always/Never), which
+  # nvim routes to the snacks vim.ui.select picker. A redraw dismisses the
+  # picker before it can be answered, so gopls re-sends it on the next analysis
+  # cycle — the ~1s flicker loop. "Off" disables the scan and the prompt.
+  # (config = the table passed to vim.lsp.config('gopls', …); gopls reads its
+  # options from the "gopls" section, so nest under settings.gopls.)
+  lsp.servers.gopls.config.settings.gopls.vulncheck = "Off";
+
   # tsserver on demand only. typescript-tools' setup() unconditionally calls
   # vim.lsp.enable, and its root_dir falls back to .git — a stray .js opened
   # inside a huge repo made tsserver index the whole tree (2026-07-14: filled
