@@ -63,6 +63,13 @@ in
   khanelivim = {
     ai.plugins = ov [ "claudecode" ];
 
+    # Match the terminal stack: wezterm runs Tokyo Night / Tokyo Night Day and
+    # drives tmux to the same family (osfiles config/wezterm/common.lua).
+    # Upstream default is catppuccin. Dark/light needs no wiring — nvim ≥0.10
+    # detects the terminal background via OSC 11 and tokyonight restyles from
+    # &background (night ↔ day).
+    ui.theme = ov "tokyonight";
+
     integrations.accountBacked.timeTracking.enable = ov false;
 
     git = {
