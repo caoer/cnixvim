@@ -113,6 +113,18 @@ in
     leetcode.enable = lib.mkForce false;
     showkeys.enable = lib.mkForce false;
 
+    # fff's base_path defaults to vim.fn.getcwd(), and its Lua layer is the ONLY
+    # binding that defaults enable_home_dir_scanning to true (the Rust C ABI,
+    # Python, Node and fff-mcp all default it false). Launch nvim from $HOME and
+    # it indexes the whole home tree into a resident in-memory index: measured
+    # 2026-07-25 at 387,511 files, 1.03 GiB RSS, 73 GiB of reads, still scanning
+    # after 11.5h (the tmux prefix+? cheatsheet popup did exactly this). The flag
+    # is a pre-flight refusal in the picker constructor, not a walk filter, so
+    # false converts that silent gigabyte into a loud error at the moment the
+    # mistake is made — including via khanelivim's <leader>fFh / <leader>fFd,
+    # which call find_files_in_dir on ~ and ~/.config and now fail instead.
+    fff.settings.enable_home_dir_scanning = false;
+
     # Guard faster.nvim's noice disable/enable against noice not yet being
     # set up (BufReadPost fires before DeferredUIEnter, so noice.setup()
     # hasn't run and noice.options.notify is nil → crash).
