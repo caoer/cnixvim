@@ -108,6 +108,14 @@ in
       args = [ "$FILENAME" ];
       stdin = false;
     };
+
+    # Format-on-save OFF — formatting is a deliberate act, never a side effect
+    # of :w. Silent on-save rewrites corrupt files that must stay byte-exact
+    # (verbatim upstream captures, faithful wiki sources, fixtures) and the
+    # damage lands in a commit before anyone reads the diff.
+    # Manual: <leader>F (conform, below) or <leader>lf (khanelivim).
+    format_on_save = lib.mkForce null;
+    format_after_save = lib.mkForce null;
   };
 
   # ── Autocmds ───────────────────────────────────────────────────────────
@@ -202,6 +210,13 @@ in
     { mode = "n"; key = "<leader>sz"; action = "<cmd>SopsDecrypt<cr>"; options = { desc = "Decrypt SOPS file"; silent = true; }; }
     { mode = "n"; key = "<leader>se"; action = "<cmd>SopsEncrypt<cr>"; options = { desc = "Encrypt SOPS file"; silent = true; }; }
     { mode = "n"; key = "<leader>jv"; action = "<cmd>Videre<cr>"; options = { desc = "JSON Graph Explorer"; silent = true; }; }
+    # Manual format — format-on-save is off (see conform settings above).
+    # Normal: whole buffer. Visual: just the selection.
+    {
+      mode = [ "n" "x" ]; key = "<leader>F";
+      action.__raw = "function() require('conform').format({ async = true, lsp_format = 'fallback' }) end";
+      options = { desc = "Format buffer/selection"; silent = true; };
+    }
   ];
 
   # ── Extra plugins (lazy-loaded) ────────────────────────────────────────
