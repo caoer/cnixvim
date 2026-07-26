@@ -101,6 +101,18 @@ in
     # with <leader>1-9 jumps below.
     bufferline.settings.options.numbers = lib.mkForce "ordinal";
 
+    # tokyonight itself follows the appearance (nvim detects the terminal
+    # background over OSC 11 → colors_name flips tokyonight-night ↔
+    # tokyonight-day), but khanelivim's tokyonight module bakes *night*
+    # palette literals into bufferline's highlight table: fill.bg and every
+    # separator.fg = "#1a1b26", every *_selected.bg = "#3b4261". Those are
+    # absolute hex, so a light appearance keeps a near-black tab bar and a
+    # dark-navy selected tab carrying day-blue text (#3760bf on #3b4261 —
+    # unreadable). Blanking the table hands the tab bar back to bufferline's
+    # colorscheme-derived defaults, which it recomputes on ColorScheme — so
+    # it tracks a live dark↔light flip instead of pinning one variant.
+    bufferline.settings.highlights = lib.mkForce { };
+
     # Hide the <leader>1-9 buffer jumps from the which-key popup — they'd
     # crowd out the mnemonic bindings.
     which-key.settings.spec = map (n: {
