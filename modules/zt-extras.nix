@@ -48,6 +48,14 @@ in
     spell = lib.mkForce false;
     spelloptions = "camel";
     updatetime = lib.mkForce 50;
+
+    # shada persists yank registers, so a yanked secret outlives the buffer
+    # that the undo/swap guard protects — a github_pat_ was found in
+    # main.shada on 2026-07-27. Default is <50; tightening to <10 lines per
+    # register. This shrinks the window, it does not close it: a one-line
+    # key still persists. Full closure would be `<0`, at the cost of
+    # cross-session yank.
+    shada = lib.mkForce "!,'100,<10,s10,h,r/tmp/,r/private/";
   };
 
   # ── Custom filetype associations ───────────────────────────────────────
