@@ -156,6 +156,28 @@ in
       '';
     }
     {
+      # SECURITY: never persist undo/swap history for secret-bearing paths.
+      # nvim-sops auto_decrypt puts PLAINTEXT into the buffer, and undofile
+      # then writes that plaintext to ~/.local/share/nvim/undo/ under a
+      # name that spells out the source path. BufReadPre runs before the
+      # swap file is created and before the undo file is read.
+      event = [ "BufReadPre" "BufNewFile" ];
+      pattern = [
+        "*.sops.*"
+        "*secret*"
+        ".env" ".env.*" "*.env" ".envrc" ".envrc.*"
+        "*credential*"
+        "*token*"
+        "*.age" "*.gpg" "*.pem" "*.key" "*.p12" "*.pfx"
+        "id_rsa" "id_dsa" "id_ecdsa" "id_ed25519"
+        ".netrc" ".pgpass" ".authinfo"
+        # sops decrypts to a tempdir; temp files have no undo history worth
+        # keeping anyway, so the whole tree is excluded.
+        "/tmp/*" "/private/tmp/*" "/var/folders/*" "/private/var/folders/*"
+      ];
+      callback.__raw = "function(args) _G.zt_no_persist(args.buf, args.file) end";
+    }
+    {
       event = [ "FileType" ];
       pattern = [ "dosini" ];
       callback.__raw = ''
@@ -333,6 +355,50 @@ in
     -- ZT Profile: Editor option overrides (dynamic paths)
     -- ====================================================================
     vim.opt.undodir = os.getenv("HOME") .. "/.local/share/nvim/undo"
+
+    -- ====================================================================
+    -- ZT Profile: Secret persistence guard (SECURITY)
+    -- ====================================================================
+    -- Resetting 'swapfile' deletes an already-created swap file; clearing
+    -- 'undofile' before BufWritePost stops the undo file from being
+    -- written. Any undo file left over from before this guard existed is
+    -- deleted here too, so re-opening a leaked path cleans it up.
+    function _G.zt_no_persist(buf, name)
+      buf = buf or 0
+      vim.bo[buf].undofile = false
+      vim.bo[buf].swapfile = false
+      name = name or vim.api.nvim_buf_get_name(buf)
+      if name == "" then return end
+      local undo_path = vim.fn.undofile(name)
+      if undo_path ~= "" and vim.fn.filereadable(undo_path) == 1 then
+        vim.fn.delete(undo_path)
+      end
+    end
+
+    -- Path patterns (see autoCmd) only catch self-describing names. Key
+    -- material also reaches ordinary buffers -- a key pasted into a
+    -- cheatsheet, a token in values.yaml. This probe covers that class.
+    local zt_secret_re = vim.regex(
+      [[\v(AGE-SECRET-KEY-|BEGIN [A-Z ]+PRIVATE KEY|sk-ant-[a-zA-Z0-9_-]{20}|ghp_[a-zA-Z0-9]{30}|github_pat_[a-zA-Z0-9_]{30}|AKIA[0-9A-Z]{16}|xoxb-[0-9]{10}|glpat-[a-zA-Z0-9_-]{20})]]
+    )
+
+    vim.api.nvim_create_autocmd({ "BufReadPost", "BufWritePre" }, {
+      callback = function(args)
+        local buf = args.buf
+        if not vim.bo[buf].undofile and not vim.bo[buf].swapfile then return end
+        if not vim.api.nvim_buf_is_loaded(buf) then return end
+        -- Bound the cost: a hand-edited secret file is never this large.
+        if vim.api.nvim_buf_line_count(buf) > 5000 then return end
+        local text = table.concat(vim.api.nvim_buf_get_lines(buf, 0, -1, false), "\n")
+        if zt_secret_re:match_str(text) then
+          _G.zt_no_persist(buf, args.file)
+          vim.notify(
+            "secret detected: undo/swap persistence disabled for this buffer",
+            vim.log.levels.WARN
+          )
+        end
+      end,
+    })
 
     -- Spell file in writable location
     local spelldir = vim.fn.expand("~/.local/share/nvim/spell")
