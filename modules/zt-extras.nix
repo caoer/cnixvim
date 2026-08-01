@@ -117,6 +117,13 @@ in
       stdin = false;
     };
 
+    # TOML — upstream wires no toml formatter and the workstation wrapper
+    # carries no taplo, so <leader>F on toml buffers was a silent no-op.
+    # Pin the binary like ccc_mdformat above; conform's builtin taplo
+    # definition supplies the args/stdin contract.
+    formatters_by_ft.toml = [ "taplo" ];
+    formatters.taplo.command = lib.getExe pkgs.taplo;
+
     # Format-on-save OFF — formatting is a deliberate act, never a side effect
     # of :w. Silent on-save rewrites corrupt files that must stay byte-exact
     # (verbatim upstream captures, faithful wiki sources, fixtures) and the
